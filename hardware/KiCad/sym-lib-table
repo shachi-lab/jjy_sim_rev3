@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "esp_jjy_sim_r3-rescue")(type "KiCad")(uri "${KIPRJMOD}/esp_jjy_sim_r3-rescue.kicad_sym")(options "")(descr ""))
+)
