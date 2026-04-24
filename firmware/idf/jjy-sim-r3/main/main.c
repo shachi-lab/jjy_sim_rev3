@@ -187,6 +187,38 @@ static i2c_master_bus_handle_t i2c_bus_init(void)
   return i2c_bus;
 }
 
+static const uint8_t brightness_table[11] = {
+    0,    // 0: 完全消灯
+    5,    // 1: ほぼ消灯に近い（でも見える）
+    10,   // 2
+    20,   // 3
+    40,   // 4
+    80,   // 5: 普通
+    120,  // 6
+    160,  // 7
+    200,  // 8
+    230,  // 9
+    255   // 10: 最大
+};
+
+
+void disp_brightness(void)
+{
+  if (s_settings.brightness < 1 || s_settings.brightness > 10) {
+    s_settings.brightness = 10;
+  }
+  OLEDDisplay_setBrightness(brightness_table[s_settings.brightness]);
+}
+
+static void disp_fade(bool direction)
+{
+  for (uint8_t i = 0; i < sizeof(brightness_table); i++) {
+    uint8_t idx = direction ? sizeof(brightness_table) - 1 - i : i;
+    OLEDDisplay_setBrightness(brightness_table[idx]);
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
+}
+
 // OLEDの画面描画
 static void disp_screen(disp_screen_t mode)
 { 
@@ -217,8 +249,9 @@ static void disp_screen(disp_screen_t mode)
   OLEDDisplay_clear();
   OLEDDisplay_setFont(ArialMT_Plain_10);
 
-  OLEDDisplay_drawString( 0,  0, JJYSIM_PRODUCT_NAME );
-  OLEDDisplay_drawStringf(100,  0, buff_str,  "%c", jjy_enable ? JJY_char : 'X');
+  OLEDDisplay_drawStringf( 0,  0, buff_str,
+     JJYSIM_PRODUCT_NAME "      %c",
+     jjy_enable ? JJY_char : 'X');
 
   const uint8_t *icon = get_wifi_icon_led(wifi_get_status(), mode == DISP_NTP_SYNCING); 
   if (icon)  OLEDDisplay_drawXbm(116, 2, 12, 12, icon);
@@ -226,7 +259,7 @@ static void disp_screen(disp_screen_t mode)
   do {
     if (mode == DISP_VERSION || mode <= DISP_WAIT_CONFIG) {
       const esp_app_desc_t *app = esp_app_get_description();
-      OLEDDisplay_drawStringf( 0, 14, buff_str, "Version %s", (char*)app->version );
+      OLEDDisplay_drawStringf( 0, 14, buff_str, "Version %s - " JJYSIM_CHIP_FAMILY, (char*)app->version );
     
       if (mode == DISP_VERSION) {
         OLEDDisplay_drawString( 0, 30, JJYSIM_COPYRIGHT );
@@ -314,20 +347,9 @@ static void disp_screen(disp_screen_t mode)
       }
     }
   } while (0);
-  OLEDDisplay_display();
-}
 
-static void disp_fade(bool direction)
-{
-  static const uint8_t fade_table[] = {
-    0, 4, 8, 16, 24, 36, 52, 72,
-    96, 124, 156, 192, 224, 255
-  };
-  for (uint8_t i = 0; i < sizeof(fade_table); i++) {
-    uint8_t idx = direction ? sizeof(fade_table) - 1 - i : i;
-    OLEDDisplay_setBrightness(fade_table[idx]);
-    vTaskDelay(pdMS_TO_TICKS(30));
-  }
+  disp_brightness();
+  OLEDDisplay_display();
 }
 
 // main

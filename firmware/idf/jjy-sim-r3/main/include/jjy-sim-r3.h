@@ -42,14 +42,17 @@
 #define JJYSIM_MODULE_NAME      "ESP32-C3-WROOM-02"
 #define JJYSIM_CERTIFICATION    "R201-220555"
 #define JJYSIM_CHIP_NAME        "ESP32-C3"
+#define JJYSIM_CHIP_FAMILY      "C3"
 #elif CONFIG_IDF_TARGET_ESP32C2
 #define JJYSIM_MODULE_NAME      "ESP8684-WROOM-02C"
 #define JJYSIM_CERTIFICATION    "R020-240412"
 #define JJYSIM_CHIP_NAME        "ESP8684"
+#define JJYSIM_CHIP_FAMILY      "C2"
 #else
 #define JJYSIM_MODULE_NAME      "Unknown"
 #define JJYSIM_GITEKIN          "Unknown"
 #define JJYSIM_CHIP_NAME        "Unknown"
+#define JJYSIM_CHIP_FAMILY      "--"
 #endif 
 
 // === Timing ===

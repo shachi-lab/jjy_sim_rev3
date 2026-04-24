@@ -14,7 +14,9 @@
     "legend{padding:0 8px;font-weight:700;color:#333;}" \
     "label{display:block;margin-top:10px;font-size:14px;color:#444;}" \
     "input,select,button{font-size:16px;padding:10px 12px;margin-top:4px;border:1px solid #bfc7d1;border-radius:8px;box-sizing:border-box;}" \
-    "input,select{width:100%;background:#fff;}" \
+    "input,select{width:100%;background:#f0f6ff;border:1px solid #7aa7ff;}" \
+    "select:focus{background:#e6f0ff;border-color:#2d6cdf;}" \
+    "option{background:#fff;color:#222;}" \
     "button{background:#2d6cdf;color:#fff;border:none;cursor:pointer;min-width:180px;}" \
     "button:hover{opacity:0.94;}" \
     "table{width:100%;border-collapse:collapse;}" \
@@ -28,6 +30,7 @@
     ".nav a{display:inline-block;padding:10px 14px;border:1px solid #c8d0da;border-radius:8px;background:#fff;color:#2d6cdf;text-decoration:none;}" \
     ".nav a:hover{text-decoration:none;background:#f8fbff;}" \
     ".footer-note{margin-top:18px;font-size:13px;color:#666;}" \
+    "input[type=range]{width:100%;}" \
     ""
 
 #define WIFI_AP_MIT_LICENSE \

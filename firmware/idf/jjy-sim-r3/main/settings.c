@@ -48,6 +48,7 @@ app_settings_t s_settings = {
   .timezone = 9.0f,
   .wifi_valid = false,
   .disp_mode = 0,
+  .brightness = 100
 };
 
 void settings_set_defaults(app_settings_t *cfg)
@@ -58,6 +59,7 @@ void settings_set_defaults(app_settings_t *cfg)
   cfg->timezone = 9.0f;
   cfg->wifi_valid = false;
   cfg->disp_mode = 0;
+  cfg->brightness = 10;
 }
 
 bool load_settings(app_settings_t *cfg)
@@ -104,6 +106,10 @@ bool load_settings(app_settings_t *cfg)
     cfg->disp_mode = (int)v32;
   }
 
+  if (nvs_get_i32(nvs, WIFI_KEY_BRIGHT, &v32) == ESP_OK) {
+    cfg->brightness = (int)v32;
+  }
+
   nvs_close(nvs);
   return true;
 }
@@ -131,8 +137,9 @@ esp_err_t save_settings(const app_settings_t *cfg)
     err = nvs_set_str(nvs, WIFI_KEY_TZ, tzbuf);
   }
   if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_DISP, cfg->disp_mode);
+  if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_BRIGHT, cfg->brightness);
   if (err == ESP_OK) err = nvs_commit(nvs);
-
+  
   nvs_close(nvs);
   return err;
 }

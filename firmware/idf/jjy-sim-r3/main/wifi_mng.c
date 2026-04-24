@@ -51,8 +51,6 @@
 
 static const char *TAG __attribute__((unused)) = "wifi_mng";
 
-#define AP_SSID_PREFIX          "JJY-SIM-R3-"
-#define AP_PASS                 ""
 #define MAX_AP_RECORDS          20
 #define DNS_PORT                53
 #define DNS_MAX_LEN             512
@@ -72,6 +70,8 @@ static char ip_str[16] = {0};
 static bool setup_mode = false;
 static bool reboot_req = false;
 static wifi_status_t wifi_status = WIFI_STATUS_UNKNOWN;
+
+void disp_brightness(void);
 
 static void reboot_req_handler(void)
 {
@@ -129,7 +129,7 @@ static void make_ap_ssid(char *out, size_t out_len)
 {
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-  snprintf(out, out_len, AP_SSID_PREFIX "%02X%02X%02X", mac[3], mac[4], mac[5]);
+  snprintf(out, out_len, WIFI_AP_SSID_PREFIX "%02X%02X%02X", mac[3], mac[4], mac[5]);
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -298,8 +298,8 @@ static void wifi_start_apsta_for_setup(void)
   ap_config.ap.max_connection = 4;
   ap_config.ap.authmode = WIFI_AUTH_OPEN;
 
-  if (strlen(AP_PASS) > 0) {
-    strlcpy((char *)ap_config.ap.password, AP_PASS, sizeof(ap_config.ap.password));
+  if (strlen(WIFI_AP_PASS) > 0) {
+    strlcpy((char *)ap_config.ap.password, WIFI_AP_PASS, sizeof(ap_config.ap.password));
     ap_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
   }
 
@@ -449,7 +449,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
   httpd_resp_sendstr_chunk(req, "<fieldset><legend>Wi-Fi</legend>");
   httpd_resp_sendstr_chunk(req, "<label>SSID</label><select name='ssid'>");
 
-  char line[256];
+  char line[512];
   for (int i = 0; i < s_scan_count; i++) {
     const char *ssid = (const char *)s_scan_records[i].ssid;
     if (ssid[0] == '\0') continue;
@@ -534,6 +534,20 @@ static esp_err_t root_get_handler(httpd_req_t *req)
       "<option value='0' selected>Clock</option><option value='1'>Status</option>");
   httpd_resp_sendstr_chunk(req, "</select>");
 
+  httpd_resp_sendstr_chunk(req,
+    "<label for='bright'>OLED brightness</label>"
+    "<div style='display:flex;align-items:center;gap:6px;'>"
+    "<span>🌙</span>");
+
+  snprintf(line, sizeof(line),
+    "<input type='range' id='bright' name='bright' min='1' max='10' value='"
+    "%d' oninput='setBrightness(this.value)'>"
+    "<span>☀️</span>"
+    "</div>",
+    s_settings.brightness
+  );
+  httpd_resp_sendstr_chunk(req, line);
+
   httpd_resp_sendstr_chunk(req, "</fieldset>");
 
   httpd_resp_sendstr_chunk(req,
@@ -560,7 +574,22 @@ static esp_err_t root_get_handler(httpd_req_t *req)
       "<a href='/info'>本体情報</a>"
       "</div>");
 
-  httpd_resp_send_footer(req);
+  httpd_resp_sendstr_chunk(req,
+    "<script>"
+    "let brightTimer;"
+    "function setBrightness(v){"
+      "clearTimeout(brightTimer);"
+      "brightTimer = setTimeout(()=>{"
+        "fetch('/set_brightness', {"
+          "method:'POST',"
+          "headers:{'Content-Type':'application/x-www-form-urlencoded'},"
+          "body:'bright=' + encodeURIComponent(v)"
+        "}).catch(()=>{});"
+      "}, 150);"
+    "}"
+    "</script>");
+
+    httpd_resp_send_footer(req);
   return ESP_OK;
 }
 
@@ -601,6 +630,9 @@ static esp_err_t save_post_handler(httpd_req_t *req)
 
   form_get_value(buf, "disp=", temp, sizeof(temp));
   if (temp[0]) cfg.disp_mode = atoi(temp);
+
+  form_get_value(buf, "bright=", temp, sizeof(temp));
+  if (temp[0]) cfg.brightness = atoi(temp);
 
   esp_err_t err = save_settings(&cfg);
   if (err != ESP_OK) {
@@ -804,6 +836,34 @@ static esp_err_t license_get_handler(httpd_req_t *req)
   return ESP_OK;
 }
 
+static esp_err_t set_brightness_post_handler(httpd_req_t *req)
+{
+  char buf[128];
+  int len = httpd_req_recv(req, buf, sizeof(buf) - 1);
+  if (len <= 0) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No body");
+    return ESP_FAIL;
+  }
+  buf[len] = '\0';
+
+  char temp[32];
+  form_get_value(buf, "bright=", temp, sizeof(temp));
+  if (temp[0] == '\0') {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No bright");
+    return ESP_FAIL;
+  }
+
+  int level = atoi(temp);
+
+  // 保存はしない。その場で反映だけ
+  s_settings.brightness = level;
+  disp_brightness();
+
+  httpd_resp_set_type(req, "text/plain; charset=utf-8");
+  httpd_resp_sendstr(req, "OK");
+  return ESP_OK;
+}
+
 static void start_web_server(void)
 {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -871,6 +931,12 @@ static void start_web_server(void)
       .method = HTTP_GET,
       .handler = license_get_handler
     };
+    httpd_uri_t set_brightness_uri = {
+      .uri      = "/set_brightness",
+      .method   = HTTP_POST,
+      .handler  = set_brightness_post_handler,
+      .user_ctx = NULL
+    };
 
     httpd_register_uri_handler(s_httpd, &root);
     httpd_register_uri_handler(s_httpd, &info);
@@ -884,6 +950,7 @@ static void start_web_server(void)
     httpd_register_uri_handler(s_httpd, &connecttest);
     httpd_register_uri_handler(s_httpd, &fwlink);
     httpd_register_uri_handler(s_httpd, &license);
+    httpd_register_uri_handler(s_httpd, &set_brightness_uri);
 
     httpd_register_err_handler(s_httpd, HTTPD_404_NOT_FOUND, http_404_error_handler);
 
