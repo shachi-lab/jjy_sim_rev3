@@ -67,9 +67,9 @@ static const char *TAG __attribute__((unused)) = "jjy_pwm";
 
 static bool jjy_signal_enable = true;
 static struct tm timeinfo;
-static char timeNowStr[40];
 static int jjy_frame[60];
 static esp_timer_handle_t s_jjy_off_timer = NULL;
+static bool dst_flag = false;
 
 static void set_timezone(float timezone, int dst);
 static void wait_for_next_second(void);
@@ -87,6 +87,7 @@ bool jjy_pwm_init(int band,int dst, float timezone)
 {
   ESP_LOGI(TAG, "JJY-SIM main start");
 
+  dst_flag = dst;
   set_timezone(timezone, dst);
 
   if (pwm_setup(band*1000) != ESP_OK) {
@@ -97,20 +98,34 @@ bool jjy_pwm_init(int band,int dst, float timezone)
   return true;
 }
 
-// Process JJY signal output
-char *jjy_pwm_proc(void)
+struct tm *jjy_get_time(void)
 {
-  static int current_min = -1;
   time_t now;
 
-  wait_for_next_second();
-
   time(&now);
+  if (dst_flag) now += 3600;
   localtime_r(&now, &timeinfo);
-
   timeinfo.tm_year -= 100;
+
+  return &timeinfo;
+}
+
+struct tm *jjw_wait_next_second(char *timeNowStr)
+{
+  wait_for_next_second();
+ 
+  jjy_get_time();
+
   sprintf(timeNowStr, "20%02d/%02d/%02d,%02d:%02d:%02d",
       timeinfo.tm_year, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+
+  return &timeinfo;
+} 
+
+// Process JJY signal output
+void jjy_pwm_proc(char *timeNowStr)
+{
+  static int current_min = -1;
 
   if (current_min != timeinfo.tm_min) {
 
@@ -121,8 +136,6 @@ char *jjy_pwm_proc(void)
     current_min = timeinfo.tm_min;
   }
   jjy_put_bit(jjy_frame[timeinfo.tm_sec]);
-
-  return timeNowStr;
 }
 
 // Set JJY signal enable

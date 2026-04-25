@@ -44,22 +44,26 @@ app_settings_t s_settings = {
   .ssid = "",
   .pass = "",
   .band = 40,
-  .dst = 0,
   .timezone = 9.0f,
+  .dst = 0,
+  .hourly_mode = false,
   .wifi_valid = false,
   .disp_mode = 0,
-  .brightness = 100
+  .brightness = 100,
+  .night_mode = false
 };
 
 void settings_set_defaults(app_settings_t *cfg)
 {
   memset(cfg, 0, sizeof(*cfg));
   cfg->band = 40;
-  cfg->dst = 0;
   cfg->timezone = 9.0f;
+  cfg->dst = 0;
+  cfg->hourly_mode = false,
   cfg->wifi_valid = false;
   cfg->disp_mode = 0;
   cfg->brightness = 10;
+  cfg->night_mode = false;
 }
 
 bool load_settings(app_settings_t *cfg)
@@ -95,19 +99,23 @@ bool load_settings(app_settings_t *cfg)
   if (nvs_get_i32(nvs, WIFI_KEY_DST, &v32) == ESP_OK) {
     cfg->dst = (int)v32;
   }
+  if (nvs_get_i32(nvs, WIFI_KEY_HOURLY, &v32) == ESP_OK) {
+    cfg->hourly_mode = (int)v32;
+  }
 
   char tzbuf[16];
   len = sizeof(tzbuf);
   if (nvs_get_str(nvs, WIFI_KEY_TZ, tzbuf, &len) == ESP_OK) {
     cfg->timezone = strtof(tzbuf, NULL);
   }
-
   if (nvs_get_i32(nvs, WIFI_KEY_DISP, &v32) == ESP_OK) {
     cfg->disp_mode = (int)v32;
   }
-
   if (nvs_get_i32(nvs, WIFI_KEY_BRIGHT, &v32) == ESP_OK) {
     cfg->brightness = (int)v32;
+  }
+  if (nvs_get_i32(nvs, WIFI_KEY_NIGHT, &v32) == ESP_OK) {
+    cfg->night_mode = (int)v32;
   }
 
   nvs_close(nvs);
@@ -131,6 +139,7 @@ esp_err_t save_settings(const app_settings_t *cfg)
   if (err == ESP_OK) err = nvs_set_blob(nvs, WIFI_KEY_PASS, &pass_blob, sizeof(pass_blob));
   if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_BAND, cfg->band);
   if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_DST, cfg->dst);
+  if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_HOURLY, cfg->hourly_mode);
   if (err == ESP_OK) {
     char tzbuf[16];
     snprintf(tzbuf, sizeof(tzbuf), "%.2f", cfg->timezone);
@@ -138,6 +147,7 @@ esp_err_t save_settings(const app_settings_t *cfg)
   }
   if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_DISP, cfg->disp_mode);
   if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_BRIGHT, cfg->brightness);
+  if (err == ESP_OK) err = nvs_set_i32(nvs, WIFI_KEY_NIGHT, cfg->night_mode);
   if (err == ESP_OK) err = nvs_commit(nvs);
   
   nvs_close(nvs);

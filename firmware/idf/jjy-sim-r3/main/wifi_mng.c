@@ -71,7 +71,7 @@ static bool setup_mode = false;
 static bool reboot_req = false;
 static wifi_status_t wifi_status = WIFI_STATUS_UNKNOWN;
 
-void disp_brightness(void);
+void disp_brightness(int hour);
 
 static void reboot_req_handler(void)
 {
@@ -480,12 +480,6 @@ static esp_err_t root_get_handler(httpd_req_t *req)
       "<option value='40'>40kHz</option><option value='60' selected>60kHz</option>");
   httpd_resp_sendstr_chunk(req, "</select>");
 
-  httpd_resp_sendstr_chunk(req, "<label>DST</label><select name='dst'>");
-  httpd_resp_sendstr_chunk(req, s_settings.dst ?
-      "<option value='0'>OFF</option><option value='1' selected>ON</option>" :
-      "<option value='0' selected>OFF</option><option value='1'>ON</option>");
-  httpd_resp_sendstr_chunk(req, "</select>");
-
   httpd_resp_sendstr_chunk(req, "<label>Timezone</label><select name='tz'>");
 
   html_tz_option(req, -12.0f, "(UTC-12:00) Baker Island");
@@ -524,6 +518,24 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
   httpd_resp_sendstr_chunk(req, "</select>");
 
+  snprintf(line, sizeof(line),
+    "<label class='checkrow'>"
+    "<input type='checkbox' name='dst' value='1' %s>"
+    "DST (+1 hour)"
+    "</label>",
+    s_settings.dst ? "checked" : ""
+  );
+  httpd_resp_sendstr_chunk(req, line);
+
+  snprintf(line, sizeof(line),
+    "<label class='checkrow'>"
+    "<input type='checkbox' name='hourly' value='1' %s>"
+    "Hourly mode (-5/+6 minutes)"
+    "</label>",
+    s_settings.hourly_mode ? "checked" : ""
+  );
+  httpd_resp_sendstr_chunk(req, line);
+
   httpd_resp_sendstr_chunk(req, "</fieldset>");
 
   httpd_resp_sendstr_chunk(req, "<fieldset><legend>Display Settings</legend>");
@@ -540,11 +552,20 @@ static esp_err_t root_get_handler(httpd_req_t *req)
     "<span>🌙</span>");
 
   snprintf(line, sizeof(line),
-    "<input type='range' id='bright' name='bright' min='1' max='10' value='"
+    "<input type='range' id='bright' name='bright' min='0' max='10' value='"
     "%d' oninput='setBrightness(this.value)'>"
     "<span>☀️</span>"
     "</div>",
     s_settings.brightness
+  );
+  httpd_resp_sendstr_chunk(req, line);
+
+  snprintf(line, sizeof(line),
+    "<label class='checkrow'>"
+    "<input type='checkbox' name='night' value='1' %s>"
+    "Night mode (22:00–7:00)"
+    "</label>",
+    s_settings.night_mode ? "checked" : ""
   );
   httpd_resp_sendstr_chunk(req, line);
 
@@ -612,27 +633,35 @@ static esp_err_t save_post_handler(httpd_req_t *req)
   }
   buf[len] = '\0';
 
+  ESP_LOGI(TAG, "POST: %s", buf);
+
   app_settings_t cfg = s_settings;
   char temp[64];
 
   form_get_value(buf, "ssid=", cfg.ssid, sizeof(cfg.ssid));
   form_get_value(buf, "pass=", cfg.pass, sizeof(cfg.pass));
+  cfg.wifi_valid = (cfg.ssid[0] != '\0');
+
   form_get_value(buf, "band=", temp, sizeof(temp));
   if (temp[0]) cfg.band = atoi(temp);
-
-  form_get_value(buf, "dst=", temp, sizeof(temp));
-  if (temp[0]) cfg.dst = atoi(temp);
 
   form_get_value(buf, "tz=", temp, sizeof(temp));
   if (temp[0]) cfg.timezone = strtof(temp, NULL);
 
-  cfg.wifi_valid = (cfg.ssid[0] != '\0');
+  form_get_value(buf, "dst=", temp, sizeof(temp));
+  cfg.dst = temp[0];
+
+  form_get_value(buf, "hourly=", temp, sizeof(temp));
+  cfg.hourly_mode = temp[0];
 
   form_get_value(buf, "disp=", temp, sizeof(temp));
   if (temp[0]) cfg.disp_mode = atoi(temp);
 
   form_get_value(buf, "bright=", temp, sizeof(temp));
   if (temp[0]) cfg.brightness = atoi(temp);
+
+  form_get_value(buf, "night=", temp, sizeof(temp));
+  cfg.night_mode = temp[0];
 
   esp_err_t err = save_settings(&cfg);
   if (err != ESP_OK) {
@@ -853,11 +882,8 @@ static esp_err_t set_brightness_post_handler(httpd_req_t *req)
     return ESP_FAIL;
   }
 
-  int level = atoi(temp);
-
-  // 保存はしない。その場で反映だけ
-  s_settings.brightness = level;
-  disp_brightness();
+  s_settings.brightness = atoi(temp);
+  disp_brightness(-1);
 
   httpd_resp_set_type(req, "text/plain; charset=utf-8");
   httpd_resp_sendstr(req, "OK");

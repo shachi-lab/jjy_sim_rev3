@@ -61,7 +61,10 @@ static char JJY_char = JJY_CHAR_EAST;     // JJY signal character
 static char tz_str[10];                   // timezone string
 static int config_wait_remain;            // configuration remain
 static char *config_str = "";             // configuration string
-static char *time_str = NULL;             // time string
+static char time_str[40];                 // time string
+static struct tm *timeinfo = NULL;        // current time
+static bool jjy_enable = true;            // JJY signal enable
+static int ntp_retry_count = 0;           // NTP retry count
 
 typedef enum {
   DISP_REBOOT      = -3,
@@ -81,34 +84,36 @@ static void disp_screen(disp_screen_t mode);
 // SNTPを使って時刻を同期する
 static bool wait_for_time_sync(int timeout_ms)
 {
-  ESP_LOGI(TAG, "Starting SNTP");
+  static bool is_initialized = false;
 
-  // SNTP設定
-  esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-  esp_sntp_setservername(0, "ntp.nict.jp");  // 日本ならこれが安定
-  esp_sntp_init();
+  if (is_initialized == false ) {
+    is_initialized = true;
+    ESP_LOGI(TAG, "Starting SNTP");
+
+    // SNTP設定
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, NTP_URL);
+    esp_sntp_init();
+  }
 
   int retry = 0;
   int max_retry = timeout_ms > 0 ? timeout_ms / 500 : 0;
 
-  time_t now = 0;
-  struct tm timeinfo = {0};
-
   while (max_retry == 0 || retry < max_retry) {
-    time(&now);
-    localtime_r(&now, &timeinfo);
+
+    timeinfo = jjy_get_time();
 
     // 年が2020未満なら未同期とみなす
-    if (timeinfo.tm_year >= (2020 - 1900)) {
+    if (timeinfo->tm_year >= 20) {
       sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
       ESP_LOGI(TAG, "Time synchronized");
       ESP_LOGI(TAG, "Current time: %04d-%02d-%02d %02d:%02d:%02d",
-                timeinfo.tm_year + 1900,
-                timeinfo.tm_mon + 1,
-                timeinfo.tm_mday,
-                timeinfo.tm_hour,
-                timeinfo.tm_min,
-                timeinfo.tm_sec);
+                timeinfo->tm_year + 1900,
+                timeinfo->tm_mon + 1,
+                timeinfo->tm_mday,
+                timeinfo->tm_hour,
+                timeinfo->tm_min,
+                timeinfo->tm_sec);
       return true;
     }
     vTaskDelay(pdMS_TO_TICKS(500));
@@ -188,26 +193,36 @@ static i2c_master_bus_handle_t i2c_bus_init(void)
 }
 
 static const uint8_t brightness_table[11] = {
-    0,    // 0: 完全消灯
-    5,    // 1: ほぼ消灯に近い（でも見える）
-    10,   // 2
-    20,   // 3
-    40,   // 4
-    80,   // 5: 普通
-    120,  // 6
-    160,  // 7
-    200,  // 8
-    230,  // 9
-    255   // 10: 最大
+  0,    // 0: ほぼ消灯に近い（でも見える）
+  1,    // 1 
+  5,    // 2
+  15,   // 3
+  25,   // 4
+  45,   // 5
+  75,   // 6
+  110,  // 7
+  150,  // 8
+  200,  // 9
+  255   // 10: 最大
 };
 
-
-void disp_brightness(void)
+void disp_brightness(int hour)
 {
-  if (s_settings.brightness < 1 || s_settings.brightness > 10) {
-    s_settings.brightness = 10;
+  static int brightness_save = -1;
+  int brightness;
+
+  if ((hour >= 0) && s_settings.night_mode && (hour >= NIGHT_TIME_START || hour < NIGHT_TIME_END)) {
+    brightness = NIGHT_TIME_BRIGHTNESS;
+  } else {
+    brightness = s_settings.brightness;
   }
-  OLEDDisplay_setBrightness(brightness_table[s_settings.brightness]);
+  if (brightness < 0 || brightness > sizeof(brightness_table)-1) {
+      brightness = sizeof(brightness_table) - 1;
+  }
+  if (brightness != brightness_save) {
+    brightness_save = brightness;
+    OLEDDisplay_setBrightness(brightness_table[brightness]);
+  }
 }
 
 static void disp_fade(bool direction)
@@ -224,9 +239,7 @@ static void disp_screen(disp_screen_t mode)
 { 
   char buff_str[40];
   static i2c_master_bus_handle_t i2c_bus = NULL;
-  static bool sw_old = false;
-  static uint8_t button_count = 0;
-  static bool jjy_enable = true;
+  int brightness_hour = -1;
 
   if (i2c_bus == NULL) {
     i2c_bus = i2c_bus_init();
@@ -249,9 +262,15 @@ static void disp_screen(disp_screen_t mode)
   OLEDDisplay_clear();
   OLEDDisplay_setFont(ArialMT_Plain_10);
 
-  OLEDDisplay_drawStringf( 0,  0, buff_str,
-     JJYSIM_PRODUCT_NAME "      %c",
-     jjy_enable ? JJY_char : 'X');
+  OLEDDisplay_drawString( 0,  0, JJYSIM_PRODUCT_NAME );
+  buff_str[2] = '\0'; 
+  buff_str[1] = jjy_enable ? '\0' : 'X'; 
+  buff_str[0] = JJY_char;
+  OLEDDisplay_drawString( 99,  0, buff_str );
+  if (s_settings.hourly_mode) {
+    buff_str[1] = 'H';
+    OLEDDisplay_drawString( 86,  0, buff_str + 1 );
+  }
 
   const uint8_t *icon = get_wifi_icon_led(wifi_get_status(), mode == DISP_NTP_SYNCING); 
   if (icon)  OLEDDisplay_drawXbm(116, 2, 12, 12, icon);
@@ -281,23 +300,11 @@ static void disp_screen(disp_screen_t mode)
     if (mode < DISP_CONNECTING) break;
 
     if (mode == DISP_SENDING) {
-      if (gpio_get_level(PIN_CONFIG) == 0) {
-        if (!sw_old) {
-          s_settings.disp_mode = !s_settings.disp_mode;
-        } else {
-          if (++button_count > 4) {
-              jjy_enable = !jjy_enable;
-              jjy_set_signal_enable(jjy_enable);
-              button_count = 0;
-            }
-        }
-        sw_old = true;
-      } else {
-        sw_old = false;
-        button_count = 0;
-      }
+
+      brightness_hour = timeinfo->tm_hour;
+
       if (s_settings.disp_mode == 0) {
-        if (time_str == NULL) break;
+        if (timeinfo == NULL) break;
         if (s_settings.dst) {
           OLEDDisplay_drawString(108, 35, "DST");
         }
@@ -331,6 +338,9 @@ static void disp_screen(disp_screen_t mode)
 
       if (mode == DISP_NTP_SYNCING) {
         OLEDDisplay_drawString( 0, 34, "NTP SYNCING...");
+        if (ntp_retry_count > 0) { 
+          OLEDDisplay_drawStringf( 0, 46, buff_str, "Retrying : %d", ntp_retry_count );
+        }
       } else
       if (mode == DISP_WAIT_0SEC) {
         OLEDDisplay_drawString( 0, 34, "WAITING 00s" );
@@ -341,15 +351,75 @@ static void disp_screen(disp_screen_t mode)
         } else {
           OLEDDisplay_drawString( 0, 34, "NOT SENDING");
         }
-        if (time_str == NULL) break;
+        if (timeinfo == NULL) break;
         OLEDDisplay_setFont(ArialMT_Plain_16);
         OLEDDisplay_drawString( 0, 46, time_str+2);
       }
     }
   } while (0);
 
-  disp_brightness();
+  if (mode > DISP_VERSION) {
+    disp_brightness(brightness_hour);
+  }
   OLEDDisplay_display();
+}
+
+static void config_switch_task(const struct tm *tm_now)
+{
+  static uint32_t call_count = 0;
+  static bool prev_pressed = false;
+  static int press_count = 0;
+  static bool long_press_done = false;
+  static bool manual_jjy = false;
+
+  call_count++;
+
+  bool pressed = (gpio_get_level(PIN_CONFIG) == 0);
+
+  if (pressed && !prev_pressed) {
+    s_settings.disp_mode = !s_settings.disp_mode;
+    press_count = 1;
+    long_press_done = false;
+  } else
+  if (pressed && prev_pressed) {
+    press_count++;
+
+    if (!long_press_done && press_count >= LONG_PRESS_SEC) {
+
+      jjy_enable = !jjy_enable;
+      manual_jjy = true;
+      long_press_done = true;
+    }
+  } else if (!pressed && prev_pressed) {
+    press_count = 0;
+    long_press_done = false;
+  }
+
+  prev_pressed = pressed;
+
+  if (!s_settings.hourly_mode) {
+    return;
+  }
+
+  if (tm_now->tm_sec != 0) {
+    return;
+  }
+
+  bool auto_jjy_enable = false;
+
+  if (call_count < BOOT_FORCE_ON_COUNT) {
+      if (long_press_done) call_count = BOOT_FORCE_ON_COUNT;
+      auto_jjy_enable = true;
+  } else {
+    int min = tm_now->tm_min;
+    if (min == HOURLY_MODE_START || min == HOURLY_MODE_END) {
+      manual_jjy = false;
+    }
+    auto_jjy_enable = (min >= HOURLY_MODE_START || min < HOURLY_MODE_END);
+  }
+  if (manual_jjy == false) {
+    jjy_enable = auto_jjy_enable;
+  }
 }
 
 // main
@@ -363,7 +433,7 @@ void app_main(void)
 
   printf("\n%s", JJYSIM_PRODUCT_NAME);
   printf("\n%s", app->version);
-  printf("\n%s", JJYSIM_COPYRIGHT);
+  printf("\n%s", JJYSIM_COPYRIGHT " " JJYSIM_VENDOR_NAME "\n");
 
   disp_screen(DISP_INIT_LOGO);
   disp_fade(false);
@@ -414,19 +484,23 @@ void app_main(void)
       if (wifi_get_status() == WIFI_STATUS_CONNECTED) {
 
         ESP_LOGI(TAG, "Connected to Wi-Fi");
-        disp_screen(DISP_NTP_SYNCING);
 
         while (1) {
-          if (wait_for_time_sync(10000)) {
+
+          disp_screen(DISP_NTP_SYNCING);
+
+          if (wait_for_time_sync(NTP_TIMEOUT*1000)) {
             // 時刻OK
             jjy_pwm_init(s_settings.band, s_settings.dst, s_settings.timezone);
             while (1) {
-              time_str = jjy_pwm_proc();
+              timeinfo = jjw_wait_next_second(time_str);
+              config_switch_task(timeinfo);
+              jjy_set_signal_enable(jjy_enable);
+              jjy_pwm_proc(time_str);
               disp_screen(DISP_SENDING);
             }
-          } else {                
-            // リトライ
-            ESP_LOGW(TAG, "Time sync failed");
+          } else {
+              ntp_retry_count++;
           }
         }  
       } else { 

@@ -31,6 +31,9 @@
     ".nav a:hover{text-decoration:none;background:#f8fbff;}" \
     ".footer-note{margin-top:18px;font-size:13px;color:#666;}" \
     "input[type=range]{width:100%;}" \
+    ".checkrow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:#444;}" \
+    ".checkrow input[type=checkbox]{width:auto;margin:0;padding:0;}" \
+    ".checkrow label{display:inline;margin:0;}" \
     ""
 
 #define WIFI_AP_MIT_LICENSE \

@@ -19,8 +19,14 @@
 // Initialize JJY PWM generator
 bool jjy_pwm_init(int band, int dst, float timezone);
 
+// Get current time
+struct tm *jjy_get_time(void);
+
+// Wait for next second
+struct tm *jjw_wait_next_second(char *timeNowStr);
+
 // Process JJY signal output (call once per second)
-char *jjy_pwm_proc(void);
+void jjy_pwm_proc(char *timeNowStr);
 
 // Convert timezone to TZ string
 char *jjy_get_tz_str(char *tz, float timezone, int dst);

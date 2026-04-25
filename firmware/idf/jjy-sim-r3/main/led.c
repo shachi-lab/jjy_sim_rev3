@@ -104,8 +104,13 @@ void led_init(void)
 {
   gpio_reset_pin(PIN_LED_WIFI);
   gpio_reset_pin(PIN_LED_PPS);
+  gpio_reset_pin(PIN_LED_RGB);
   gpio_set_direction(PIN_LED_WIFI, GPIO_MODE_OUTPUT);
   gpio_set_direction(PIN_LED_PPS, GPIO_MODE_OUTPUT);
+  gpio_set_direction(PIN_LED_RGB, GPIO_MODE_OUTPUT);
+  gpio_set_level(PIN_LED_WIFI, LED_LEVEL_OFF);
+  gpio_set_level(PIN_LED_PPS, LED_LEVEL_OFF);
+  gpio_set_level(PIN_LED_RGB, 0);
 }
 
 void led_blink(uint8_t pin, led_mode_t mode)

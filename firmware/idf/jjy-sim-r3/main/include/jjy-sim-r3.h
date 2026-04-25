@@ -60,6 +60,18 @@
 #define CONFIG_WAIT_TICK        100     // msec
 #define CONNECT_TIMEOUT         30      // sec
 
+#define NTP_TIMEOUT             10      // sec
+#define NTP_URL                 "ntp.nict.jp"   // 日本ならこれが安定
 #define TIMEZONE_JAPAN          9.0     // JST
+
+#define NIGHT_TIME_START        22      // 22:00
+#define NIGHT_TIME_END          7       // 07:00
+#define NIGHT_TIME_BRIGHTNESS   0       // 0
+
+#define HOURLY_MODE_START       55      // 00:55
+#define HOURLY_MODE_END         6       // 00:06
+
+#define LONG_PRESS_SEC          5
+#define BOOT_FORCE_ON_COUNT     600
 
 #endif
