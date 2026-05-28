@@ -1,0 +1,219 @@
+(footprint "MSK-12C02"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "1P2T SPDT slide switch")
+	(property "Reference" "REF**"
+		(at 0 3.45 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "d04825a3-8776-4697-8f7a-306fd894b453")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "MSK-12C02"
+		(at 0 4.9 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "e6066d20-e572-4b1f-9f3f-53995f480329")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "783984b7-11aa-48d3-aec8-8994995678f8")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "34f2e96c-07ad-4062-ace8-130399f8221a")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -3.325 -0.6)
+		(end -3.325 0.6)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e063b142-3a8c-42b2-9656-9fb671369456")
+	)
+	(fp_line
+		(start -2.95 -1.35)
+		(end 2.95 -1.35)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2372f797-7c04-4254-af3c-a6797fe55278")
+	)
+	(fp_line
+		(start -1.75 1.35)
+		(end -1.25 1.35)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "fcfdfb9f-dd1e-4dfc-98ce-d2cac28dfbca")
+	)
+	(fp_line
+		(start -0.25 1.35)
+		(end 1.75 1.35)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "ff8f14f8-b327-4864-8b6a-9c7e8961f995")
+	)
+	(fp_line
+		(start 3.325 -0.6)
+		(end 3.325 0.6)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2b51d829-c66a-490b-986c-4304fcc37281")
+	)
+	(fp_line
+		(start -1.4 -2.85)
+		(end -1.4 -1.35)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "37714b51-aa29-44fa-b285-9975eee32399")
+	)
+	(fp_line
+		(start -1.4 -2.85)
+		(end 1.4 -2.85)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "2093e824-1c13-4f5c-b95f-a92597b08fa3")
+	)
+	(fp_line
+		(start 1.4 -2.85)
+		(end 1.4 -1.35)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "12180bb9-75d0-4b97-95b8-b169219b6eff")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 6.2 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "e1196c74-1103-4ac7-beef-c8f5a4dd9bae")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "" smd rect
+		(at -3.65 -1.1)
+		(size 1.2 0.8)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "f8a253aa-03e1-4498-8923-4956e6eeff6f")
+	)
+	(pad "" smd rect
+		(at -3.65 1.1)
+		(size 1.2 0.8)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "335a9b54-6cce-413b-9977-265e02caebd8")
+	)
+	(pad "" np_thru_hole circle
+		(at -1.5 0)
+		(size 0.8 0.8)
+		(drill 0.8)
+		(layers "*.Cu" "*.Mask")
+		(uuid "f90de9a0-18ee-4320-bd88-78a0bdb79623")
+	)
+	(pad "" np_thru_hole circle
+		(at 1.5 0)
+		(size 0.8 0.8)
+		(drill 0.8)
+		(layers "*.Cu" "*.Mask")
+		(uuid "6b194219-8ed7-4ded-b893-632499cf511b")
+	)
+	(pad "" smd rect
+		(at 3.65 -1.1)
+		(size 1.2 0.8)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "d628d7ed-587a-4137-b71b-5cb8a56ac3b3")
+	)
+	(pad "" smd rect
+		(at 3.65 1.1)
+		(size 1.2 0.8)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "c6746147-7da2-4b31-80f3-38c665e3d191")
+	)
+	(pad "1" smd rect
+		(at -2.25 1.8)
+		(size 0.8 1.8)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "48fc2498-7fb0-4511-88ab-cb8c56198597")
+	)
+	(pad "2" smd rect
+		(at -0.75 1.8)
+		(size 0.8 1.8)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "3c67f80e-0704-4323-b766-bd7b28183086")
+	)
+	(pad "3" smd rect
+		(at 2.25 1.8)
+		(size 0.8 1.8)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "2af4241b-a626-4032-96b8-6bf34e89209e")
+	)
+	(embedded_fonts no)
+	(model "${KIPRJMOD}/lib/3dmodels/MSK-12C02.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)
