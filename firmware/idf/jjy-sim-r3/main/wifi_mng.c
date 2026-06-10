@@ -55,7 +55,23 @@ static const char *TAG __attribute__((unused)) = "wifi_mng";
 #define DNS_PORT                53
 #define DNS_MAX_LEN             512
 
+#define SEND_BUF_SIZE           512
+
 #define STA_CONNECT_TIMEOUT_MS  1000
+
+#define POST_NAME_SSID		  "ssid"
+#define POST_NAME_PASS		  "pass"
+#define POST_NAME_BAND		  "band"
+#define POST_NAME_TZ		    "tz"
+#define POST_NAME_DST		    "dst"
+#define POST_NAME_HOURLY	  "hourly"
+#define POST_NAME_RANGE		  "range"
+#define POST_NAME_DISP		  "disp"
+#define POST_NAME_BRIGHT	  "bright"
+#define POST_NAME_NIGHT		  "night"
+#define POST_NAME_NTP_MODE	"ntpmode"
+#define POST_NAME_NTP_URL	  "ntpurl"
+#define POST_NAME_OFFSET	  "ofs_tm"
 
 static EventGroupHandle_t s_wifi_event_group;
 static const int WIFI_CONNECTED_BIT = BIT0;
@@ -72,6 +88,8 @@ static bool reboot_req = false;
 static wifi_status_t wifi_status = WIFI_STATUS_UNKNOWN;
 
 void disp_brightness(int hour);
+
+static esp_err_t httpd_resp_send_printf(httpd_req_t *req, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 static void reboot_req_handler(void)
 {
@@ -411,15 +429,25 @@ static void dns_server_task(void *arg)
   }
 }
 
+static esp_err_t httpd_resp_send_printf(httpd_req_t *req, const char *fmt, ...)
+{
+    char line[SEND_BUF_SIZE];
+
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(line, sizeof(line), fmt, args);
+    va_end(args);
+
+    return httpd_resp_sendstr_chunk(req, line);
+}
+
 static void html_tz_option(httpd_req_t *req, float val, const char *label)
 {
-  char line[256];
-  snprintf(line, sizeof(line),
-            "<option value='%.2f'%s>%s</option>",
-            val,
-            (fabsf(val - s_settings.timezone) < 0.01f) ? " selected" : "",
-            label);
-  httpd_resp_sendstr_chunk(req, line);
+  httpd_resp_send_printf(req,
+    "<option value='%.2f'%s>%s</option>",
+    val,
+    (fabsf(val - s_settings.timezone) < 0.01f) ? " selected" : "",
+    label);
 }
 
 static void httpd_resp_send_header(httpd_req_t *req)
@@ -429,7 +457,8 @@ static void httpd_resp_send_header(httpd_req_t *req)
     "<meta name='viewport' content='width=device-width,initial-scale=1'>"
     "<title>" WIFI_AP_TITLE "</title>"
     "<style>" WIFI_AP_CSS_STYLE "</style>"
-    "</head><body>");
+    "</head><body>"
+  );
 }
 
 static void httpd_resp_send_footer(httpd_req_t *req)
@@ -438,49 +467,57 @@ static void httpd_resp_send_footer(httpd_req_t *req)
   httpd_resp_sendstr_chunk(req, NULL);
 }
 
+static inline const char *get_checed_str(bool val)
+{
+  return val ? "checked" : "";
+}
+
 static esp_err_t root_get_handler(httpd_req_t *req)
 {
   html_begin(req);
   httpd_resp_send_header(req);
 
+  httpd_resp_sendstr_chunk(req, 
+    "<button id='dummy' style='position:absolute; top:-1000px;'></button>"
+    "<script>window.addEventListener('load',()=>{"
+    "document.getElementById('dummy').focus();});"
+    "</script>");
+
   httpd_resp_sendstr_chunk(req, "<h1>" WIFI_AP_TITLE "</h1>");
   httpd_resp_sendstr_chunk(req, "<form method='POST' action='/save'>");
 
   httpd_resp_sendstr_chunk(req, "<fieldset><legend>Wi-Fi</legend>");
-  httpd_resp_sendstr_chunk(req, "<label>SSID</label><select name='ssid'>");
+  httpd_resp_sendstr_chunk(req, "<label>SSID</label><select name='" POST_NAME_SSID "'>");
 
-  char line[512];
   for (int i = 0; i < s_scan_count; i++) {
     const char *ssid = (const char *)s_scan_records[i].ssid;
     if (ssid[0] == '\0') continue;
 
-    snprintf(line, sizeof(line),
+      httpd_resp_send_printf(req,
         "<option value='%s'%s>%s (RSSI=%d)</option>",
         ssid,
         (strcmp(ssid, s_settings.ssid) == 0) ? " selected" : "",
         ssid,
         s_scan_records[i].rssi);
-    httpd_resp_sendstr_chunk(req, line);
   }
-
   httpd_resp_sendstr_chunk(req, "</select>");
-  httpd_resp_sendstr_chunk(req, "<label>Password</label>");
 
-  snprintf(line, sizeof(line),
-      "<input type='password' name='pass' value='%s' style='width:100%%'>",
-      s_settings.pass);
-  httpd_resp_sendstr_chunk(req, line);
+  httpd_resp_send_printf(req,
+    "<label>Password</label>"
+    "<input type='password' name='" POST_NAME_PASS "' value='%s' style='width:100%%'>",
+    s_settings.pass);
+
   httpd_resp_sendstr_chunk(req, "</fieldset>");
 
-  httpd_resp_sendstr_chunk(req, "<fieldset><legend>JJY Settings</legend>");
+  httpd_resp_sendstr_chunk(req, "<fieldset><legend>JJY</legend>");
 
-  httpd_resp_sendstr_chunk(req, "<label>BAND</label><select name='band'>");
+  httpd_resp_sendstr_chunk(req, "<label>Band</label><select name='" POST_NAME_BAND "'>");
   httpd_resp_sendstr_chunk(req, s_settings.band == 40 ?
-      "<option value='40' selected>40kHz</option><option value='60'>60kHz</option>" :
-      "<option value='40'>40kHz</option><option value='60' selected>60kHz</option>");
+    "<option value='40' selected>40kHz</option><option value='60'>60kHz</option>" :
+    "<option value='40'>40kHz</option><option value='60' selected>60kHz</option>");
   httpd_resp_sendstr_chunk(req, "</select>");
 
-  httpd_resp_sendstr_chunk(req, "<label>Timezone</label><select name='tz'>");
+  httpd_resp_sendstr_chunk(req, "<label>Timezone</label><select name='" POST_NAME_TZ "'>");
 
   html_tz_option(req, -12.0f, "(UTC-12:00) Baker Island");
   html_tz_option(req, -11.0f, "(UTC-11:00) American Samoa");
@@ -518,85 +555,121 @@ static esp_err_t root_get_handler(httpd_req_t *req)
 
   httpd_resp_sendstr_chunk(req, "</select>");
 
-  snprintf(line, sizeof(line),
+  httpd_resp_send_printf(req,
     "<label class='checkrow'>"
-    "<input type='checkbox' name='dst' value='1' %s>"
+    "<input type='checkbox' name='" POST_NAME_DST "' value='1' %s>"
     "DST (+1 hour)"
     "</label>",
-    s_settings.dst ? "checked" : ""
+    get_checed_str(s_settings.dst)
   );
-  httpd_resp_sendstr_chunk(req, line);
 
-  snprintf(line, sizeof(line),
+  httpd_resp_send_printf(req,
     "<label class='checkrow'>"
-    "<input type='checkbox' name='hourly' value='1' %s>"
-    "Hourly mode (-5/+6 minutes)"
+    "<input type='checkbox' id='" POST_NAME_HOURLY "' name='" POST_NAME_HOURLY "' value='1' %s>"
+    "Hourly mode"
     "</label>",
-    s_settings.hourly_mode ? "checked" : ""
+    get_checed_str(s_settings.hourly_mode)
   );
-  httpd_resp_sendstr_chunk(req, line);
+
+  httpd_resp_send_printf(req,
+    "<div id='hourly_area' class='setting'>"
+      "Active range: ±"
+      "<input type='number' name='" POST_NAME_RANGE "' min='1' max='29' value='%d'>"
+      "minutes (1～29)"
+    "</div>",
+    s_settings.hourly_range
+  );
+
+  httpd_resp_send_printf(req,
+    "<div id='ofs_tm' class='setting'>"
+      "Offset time: ±"
+      "<input type='number' name='" POST_NAME_OFFSET"' min='-30' max='30' value='%d'>"
+      "minutes (-30～30)"
+    "</div>",
+    s_settings.offset_time
+  );
 
   httpd_resp_sendstr_chunk(req, "</fieldset>");
 
-  httpd_resp_sendstr_chunk(req, "<fieldset><legend>Display Settings</legend>");
+  httpd_resp_sendstr_chunk(req, "<fieldset><legend>Display</legend>");
 
-  httpd_resp_sendstr_chunk(req, "<label>Initial display mode</label><select name='disp'>");
+  httpd_resp_sendstr_chunk(req, "<label>Initial display mode</label><select name='" POST_NAME_DISP "'>");
   httpd_resp_sendstr_chunk(req, s_settings.disp_mode ?
-      "<option value='0'>Clock</option><option value='1' selected>Status</option>" :
-      "<option value='0' selected>Clock</option><option value='1'>Status</option>");
+    "<option value='0'>Clock</option><option value='1' selected>Status</option>" :
+    "<option value='0' selected>Clock</option><option value='1'>Status</option>");
   httpd_resp_sendstr_chunk(req, "</select>");
 
   httpd_resp_sendstr_chunk(req,
     "<label for='bright'>OLED brightness</label>"
     "<div style='display:flex;align-items:center;gap:6px;'>"
-    "<span>🌙</span>");
+      "<span>🌙</span>"
+  );
 
-  snprintf(line, sizeof(line),
-    "<input type='range' id='bright' name='bright' min='0' max='10' value='"
-    "%d' oninput='setBrightness(this.value)'>"
-    "<span>☀️</span>"
+  httpd_resp_send_printf(req,
+      "<input type='range' id='bright' name='" POST_NAME_BRIGHT "' min='0' max='10' value='"
+      "%d' oninput='setBrightness(this.value)'>"
+      "<span>☀️</span>"
     "</div>",
     s_settings.brightness
   );
-  httpd_resp_sendstr_chunk(req, line);
 
-  snprintf(line, sizeof(line),
+  httpd_resp_send_printf(req,
     "<label class='checkrow'>"
-    "<input type='checkbox' name='night' value='1' %s>"
-    "Night mode (22:00–7:00)"
+      "<input type='checkbox' name='" POST_NAME_NIGHT "' value='1' %s>"
+      "Night mode (22:00–7:00)"
     "</label>",
-    s_settings.night_mode ? "checked" : ""
+    get_checed_str(s_settings.night_mode)
   );
-  httpd_resp_sendstr_chunk(req, line);
+
+  httpd_resp_sendstr_chunk(req, "</fieldset>");
+
+  httpd_resp_sendstr_chunk(req, "<fieldset><legend>NTP</legend>");
+
+  httpd_resp_send_printf(req,
+    "<label class='radiorow'>"
+      "<input type='radio' name='" POST_NAME_NTP_MODE "' value='0' %s>"
+      "<span class='ntp-label'>Default NTP server ( "NTP_URL" )</span>"
+    "</label>",
+    get_checed_str(!s_settings.ntp_mode)
+  );
+
+  httpd_resp_send_printf(req,   
+    "<label class='radiorow'>"
+      "<input type='radio' name='" POST_NAME_NTP_MODE "' value='1' %s>"
+      "<span class='ntp-label'>Custom NTP server</span>"
+    "</label>",
+    get_checed_str(s_settings.ntp_mode)
+  );
+
+  httpd_resp_send_printf(req,
+    "<div class='ntp-input'>"
+      "<input type='text' id='" POST_NAME_NTP_URL "' name='" POST_NAME_NTP_URL "' "
+      "value='%s' %s placeholder='pool.ntp.org'>"
+    "</div>",
+    s_settings.ntp_url,
+    s_settings.ntp_mode ? "" : "disabled"
+  );
 
   httpd_resp_sendstr_chunk(req, "</fieldset>");
 
   httpd_resp_sendstr_chunk(req,
-      "<button type='submit'>保存して再起動</button></form>");
-
-  httpd_resp_sendstr_chunk(req, "<div class='actions'>");
-
-  httpd_resp_sendstr_chunk(req,
-      "<hr><form method='POST' action='/scan'>"
-      "<button type='submit'>Wi-Fi再スキャン</button></form>");
-
-  httpd_resp_sendstr_chunk(req,
-      "<form method='POST' action='/clear_wifi'>"
-      "<button type='submit'>Wi-Fi設定クリア</button></form>");
-
-  httpd_resp_sendstr_chunk(req,
-      "<form method='POST' action='/reboot'>"
-      "<button type='submit'>再起動</button></form>");
-
-  httpd_resp_sendstr_chunk(req, "</div>");
-
-  httpd_resp_sendstr_chunk(req,
-      "<div class='nav'>"
-      "<a href='/info'>本体情報</a>"
-      "</div>");
+    "<button type='submit'>保存して再起動</button></form>"
+    "<div class='actions'>"
+    "<hr><form method='POST' action='/scan'>"
+    "<button type='submit'>Wi-Fi再スキャン</button></form>"
+    "<form method='POST' action='/clear_wifi'>"
+    "<button type='submit'>Wi-Fi設定クリア</button></form>"
+    "<form method='POST' action='/reboot'>"
+    "<button type='submit'>再起動</button></form>"
+    "</div>"
+    "<div class='nav'>"
+    "<a href='/info'>本体情報</a>"
+    "</div>"
+  );
 
   httpd_resp_sendstr_chunk(req,
     "<script>"
+    // ===== BRIGHTNESS =====
     "let brightTimer;"
     "function setBrightness(v){"
       "clearTimeout(brightTimer);"
@@ -604,13 +677,40 @@ static esp_err_t root_get_handler(httpd_req_t *req)
         "fetch('/set_brightness', {"
           "method:'POST',"
           "headers:{'Content-Type':'application/x-www-form-urlencoded'},"
-          "body:'bright=' + encodeURIComponent(v)"
+          "body:'" POST_NAME_BRIGHT "=' + encodeURIComponent(v)"
         "}).catch(()=>{});"
       "}, 150);"
     "}"
-    "</script>");
+    "function setAreaEnabled(areaId, enabled){"
+      "document.querySelectorAll('#'+areaId+' input, #'+areaId+' select, #'+areaId+' textarea')"
+        ".forEach(el => el.disabled = !enabled);"
+    "}"
+    "document.addEventListener('DOMContentLoaded', () => {"
+      // ===== NTP =====
+      "const radios = document.querySelectorAll('input[name=\"" POST_NAME_NTP_MODE "\"]');"
+      "const input = document.getElementById('" POST_NAME_NTP_URL "');"
+      "const updateNtp = () => {"
+        "input.disabled = radios[0].checked;"
+      "};"
+      "radios.forEach(r => r.addEventListener('change', updateNtp));"
+      "updateNtp();"
+      // ===== Hourly =====
+      "const hourlyCheckbox = document.getElementById('" POST_NAME_HOURLY "');"
+      "const hourlyArea = document.getElementById('hourly_area');"
+      "if(hourlyCheckbox && hourlyArea){"
+        "const updateHourly = () => {"
+          "const enabled = hourlyCheckbox.checked;"
+          "setAreaEnabled('hourly_area', enabled);"
+          "hourlyArea.classList.toggle('disabled', !enabled);"
+        "};"
+        "hourlyCheckbox.addEventListener('change', updateHourly);"
+        "updateHourly();"
+      "}"
+    "});"
+    "</script>"
+  );
+  httpd_resp_send_footer(req);
 
-    httpd_resp_send_footer(req);
   return ESP_OK;
 }
 
@@ -638,30 +738,41 @@ static esp_err_t save_post_handler(httpd_req_t *req)
   app_settings_t cfg = s_settings;
   char temp[64];
 
-  form_get_value(buf, "ssid=", cfg.ssid, sizeof(cfg.ssid));
-  form_get_value(buf, "pass=", cfg.pass, sizeof(cfg.pass));
+  form_get_value(buf, POST_NAME_SSID"=", cfg.ssid, sizeof(cfg.ssid));
+  form_get_value(buf, POST_NAME_PASS"=", cfg.pass, sizeof(cfg.pass));
   cfg.wifi_valid = (cfg.ssid[0] != '\0');
 
-  form_get_value(buf, "band=", temp, sizeof(temp));
+  form_get_value(buf, POST_NAME_BAND"=", temp, sizeof(temp));
   if (temp[0]) cfg.band = atoi(temp);
 
-  form_get_value(buf, "tz=", temp, sizeof(temp));
+  form_get_value(buf, POST_NAME_TZ"=", temp, sizeof(temp));
   if (temp[0]) cfg.timezone = strtof(temp, NULL);
 
-  form_get_value(buf, "dst=", temp, sizeof(temp));
+  form_get_value(buf, POST_NAME_DST"=", temp, sizeof(temp));
   cfg.dst = temp[0];
 
-  form_get_value(buf, "hourly=", temp, sizeof(temp));
+  form_get_value(buf, POST_NAME_HOURLY"=", temp, sizeof(temp));
   cfg.hourly_mode = temp[0];
 
-  form_get_value(buf, "disp=", temp, sizeof(temp));
+  form_get_value(buf, POST_NAME_RANGE"=", temp, sizeof(temp));
+  if (temp[0]) cfg.hourly_range = atoi(temp);
+
+  form_get_value(buf, POST_NAME_OFFSET"=", temp, sizeof(temp));
+  if (temp[0]) cfg.offset_time = atoi(temp);
+
+  form_get_value(buf, POST_NAME_DISP"=", temp, sizeof(temp));
   if (temp[0]) cfg.disp_mode = atoi(temp);
 
-  form_get_value(buf, "bright=", temp, sizeof(temp));
+  form_get_value(buf, POST_NAME_BRIGHT"=", temp, sizeof(temp));
   if (temp[0]) cfg.brightness = atoi(temp);
 
-  form_get_value(buf, "night=", temp, sizeof(temp));
+  form_get_value(buf, POST_NAME_NIGHT"=", temp, sizeof(temp));
   cfg.night_mode = temp[0];
+
+  form_get_value(buf, POST_NAME_NTP_MODE"=", temp, sizeof(temp));
+  if (temp[0]) cfg.ntp_mode = atoi(temp);
+
+  form_get_value(buf, POST_NAME_NTP_URL"=", cfg.ntp_url, sizeof(cfg.ntp_url));
 
   esp_err_t err = save_settings(&cfg);
   if (err != ESP_OK) {
@@ -726,13 +837,11 @@ static void format_mac_addr(char *out, size_t out_len, const uint8_t mac[6])
 
 static void html_send_kv_ex(httpd_req_t *req, const char *key, const char *value, bool mono)
 {
-  char line[384];
-  snprintf(line, sizeof(line),
+  httpd_resp_send_printf(req,
            "<tr><th>%s</th><td%s>%s</td></tr>",
            key,
            mono ? " class='mono'" : "",
            value ? value : "");
-  httpd_resp_sendstr_chunk(req, line);
 }
 
 static void html_send_kv(httpd_req_t *req, const char *key, const char *value)
@@ -747,12 +856,9 @@ static void html_send_kv_mono(httpd_req_t *req, const char *key, const char *val
 
 static void html_send_fieldset_open(httpd_req_t *req, const char *title)
 {
-    char line[128];
-
-    snprintf(line, sizeof(line),
+  httpd_resp_send_printf(req,
       "<fieldset><legend>%s</legend><table>",
       title);
-    httpd_resp_sendstr_chunk(req, line);
 }
 
 static void html_send_fieldset_close(httpd_req_t *req)

@@ -58,13 +58,15 @@
 static const char *TAG __attribute__((unused)) = "main";
 
 static char JJY_char = JJY_CHAR_EAST;     // JJY signal character
-static char tz_str[10];                   // timezone string
+static char tz_str[10] = {0};              // timezone string
 static int config_wait_remain;            // configuration remain
 static char *config_str = "";             // configuration string
 static char time_str[40];                 // time string
 static struct tm *timeinfo = NULL;        // current time
 static bool jjy_enable = true;            // JJY signal enable
 static int ntp_retry_count = 0;           // NTP retry count
+static char *ntp_server = NTP_URL;        // NTP server
+static char offset_str[8] = {0};          // offset string
 
 typedef enum {
   DISP_REBOOT      = -3,
@@ -74,9 +76,8 @@ typedef enum {
   DISP_VERSION     = 1,
   DISP_CONNECTING  = 2,
   DISP_CONNECTED   = 3,
-  DISP_WAIT_0SEC   = 4,
-  DISP_NTP_SYNCING = 5,
-  DISP_SENDING     = 6
+  DISP_NTP_SYNCING = 4,
+  DISP_SENDING     = 5
 } disp_screen_t;
 
 static void disp_screen(disp_screen_t mode);
@@ -92,7 +93,7 @@ static bool wait_for_time_sync(int timeout_ms)
 
     // SNTP設定
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    esp_sntp_setservername(0, NTP_URL);
+    esp_sntp_setservername(0, ntp_server);
     esp_sntp_init();
   }
 
@@ -135,10 +136,9 @@ static bool main_wait_for_config(void)
   };
   gpio_config(&io_conf);
 
-  config_wait_remain = CONFIG_WAIT_TIME / 1000;
-  for (int i = CONFIG_WAIT_TIME/CONFIG_WAIT_TICK; i; i--) {
+  for (int i = CONFIG_WAIT_TIME; i > 0; i -= CONFIG_WAIT_TICK) {
+    config_wait_remain = (i + 500)/ 1000;
     disp_screen(DISP_WAIT_CONFIG);
-    config_wait_remain = i / (1000/CONFIG_WAIT_TICK) + 1;
     vTaskDelay(pdMS_TO_TICKS(CONFIG_WAIT_TICK));
     if (gpio_get_level(PIN_CONFIG) == 0) {
       return true;
@@ -334,22 +334,20 @@ static void disp_screen(disp_screen_t mode)
       OLEDDisplay_drawString( 0, 24, "Connecting..." );
     } else {
       OLEDDisplay_drawStringf( 0, 24, buff_str, "Connect : %s", get_wifi_addr_str() );
-      OLEDDisplay_drawString( 78, 34, tz_str );
-
       if (mode == DISP_NTP_SYNCING) {
         OLEDDisplay_drawString( 0, 34, "NTP SYNCING...");
+        OLEDDisplay_drawString( 0, 44, ntp_server);
         if (ntp_retry_count > 0) { 
-          OLEDDisplay_drawStringf( 0, 46, buff_str, "Retrying : %d", ntp_retry_count );
+          OLEDDisplay_drawStringf( 0, 54, buff_str, "Retrying : %d", ntp_retry_count );
         }
       } else
-      if (mode == DISP_WAIT_0SEC) {
-        OLEDDisplay_drawString( 0, 34, "WAITING 00s" );
-      } else
       if (mode == DISP_SENDING) {
-        if (jjy_enable) {
-          OLEDDisplay_drawString( 0, 34, "SENDING...");
+        OLEDDisplay_drawString( 54, 34, tz_str );
+        OLEDDisplay_drawString(110, 34, offset_str );
+      if (jjy_enable) {
+          OLEDDisplay_drawString( 0, 34, "SEND ON");
         } else {
-          OLEDDisplay_drawString( 0, 34, "NOT SENDING");
+          OLEDDisplay_drawString( 0, 34, "SEND OFF");
         }
         if (timeinfo == NULL) break;
         OLEDDisplay_setFont(ArialMT_Plain_16);
@@ -406,16 +404,18 @@ static void config_switch_task(const struct tm *tm_now)
   }
 
   bool auto_jjy_enable = false;
+  int houurly_start = 60 - s_settings.hourly_range;
+  int houurly_end = s_settings.hourly_range + 1;
 
   if (call_count < BOOT_FORCE_ON_COUNT) {
       if (long_press_done) call_count = BOOT_FORCE_ON_COUNT;
       auto_jjy_enable = true;
   } else {
     int min = tm_now->tm_min;
-    if (min == HOURLY_MODE_START || min == HOURLY_MODE_END) {
+    if (min == houurly_start || min == houurly_end) {
       manual_jjy = false;
     }
-    auto_jjy_enable = (min >= HOURLY_MODE_START || min < HOURLY_MODE_END);
+    auto_jjy_enable = (min >= houurly_start || min < houurly_end);
   }
   if (manual_jjy == false) {
     jjy_enable = auto_jjy_enable;
@@ -450,6 +450,12 @@ void app_main(void)
   if (s_settings.band == JJY_BAND_WEST) JJY_char = JJY_CHAR_WEST;
   jjy_get_tz_str(tz_str, s_settings.timezone, s_settings.dst);
   if (s_settings.dst) strcat(tz_str, "*");
+  sprintf(offset_str, "%+d", s_settings.offset_time);
+  if (s_settings.ntp_mode && s_settings.ntp_url[0] != '\0') {    
+    ntp_server = s_settings.ntp_url;
+  } else {
+    ntp_server = NTP_URL;
+  }
 
   vTaskDelay(pdMS_TO_TICKS(2000));
   disp_fade(true);
@@ -491,7 +497,7 @@ void app_main(void)
 
           if (wait_for_time_sync(NTP_TIMEOUT*1000)) {
             // 時刻OK
-            jjy_pwm_init(s_settings.band, s_settings.dst, s_settings.timezone);
+            jjy_pwm_init(s_settings.band, s_settings.dst, s_settings.timezone, s_settings.offset_time);
             while (1) {
               timeinfo = jjw_wait_next_second(time_str);
               config_switch_task(timeinfo);

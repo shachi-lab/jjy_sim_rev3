@@ -17,7 +17,7 @@
 #include <stdint.h>
 
 // Initialize JJY PWM generator
-bool jjy_pwm_init(int band, int dst, float timezone);
+bool jjy_pwm_init(int band,int dst, float timezone, int offset_time);
 
 // Get current time
 struct tm *jjy_get_time(void);

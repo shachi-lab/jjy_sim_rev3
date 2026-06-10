@@ -223,3 +223,16 @@ ESP-IDF Extension の設定を含めた状態で作業できます。
 
 * ブログ記事（詳細解説）  
   👉 https://blog.shachi-lab.com/054_jjy-sim-r3-esp8684-idf/
+
+---
+
+## 表記について
+
+本プロジェクトは MIT License で公開しています。
+
+JJY-SIM の設計、ファームウェア、回路図、基板データ、筐体データ、ドキュメント等を利用・改変したものを販売、配布、または公開する場合は、製品ページ、説明書、README、パッケージ等、いずれかの分かりやすい場所に、Shachi-lab / JJY-SIM を元にしていることを記載してください。
+
+表記例：
+Designed by Shachi-lab
+Based on JJY-SIM by Shachi-lab
+Inspired by JJY-SIM by Shachi-lab

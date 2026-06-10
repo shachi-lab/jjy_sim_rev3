@@ -226,3 +226,15 @@ Please make sure to comply with applicable radio regulations when experimenting 
 * Blog article with detailed explanation  
   👉 [https://blog.shachi-lab.com/054_jjy-sim-r3-esp8684-idf/](https://blog.shachi-lab.com/054_jjy-sim-r3-esp8684-idf/)
 
+---
+
+## Attribution
+
+This project is released under the MIT License.
+
+If you sell, distribute, or publicly release any product, design, firmware, schematic, PCB data, enclosure data, documentation, or derivative work based on or modified from JJY-SIM, please include attribution to Shachi-lab / JJY-SIM in a clearly visible place, such as the product page, manual, README, package, or other accompanying documentation.
+
+Example:
+Designed by Shachi-lab
+Based on JJY-SIM by Shachi-lab
+Inspired by JJY-SIM by Shachi-lab

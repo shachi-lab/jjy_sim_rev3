@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <math.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -70,6 +71,7 @@ static struct tm timeinfo;
 static int jjy_frame[60];
 static esp_timer_handle_t s_jjy_off_timer = NULL;
 static bool dst_flag = false;
+static int offset = 0;
 
 static void set_timezone(float timezone, int dst);
 static void wait_for_next_second(void);
@@ -83,10 +85,11 @@ static void pwm_off(void);
 static void pwm_stop(void);
 
 // Initialize JJY PWM generator
-bool jjy_pwm_init(int band,int dst, float timezone)
+bool jjy_pwm_init(int band, int dst, float timezone, int offset_time)
 {
   ESP_LOGI(TAG, "JJY-SIM main start");
 
+  offset = offset_time * 60;
   dst_flag = dst;
   set_timezone(timezone, dst);
 
@@ -103,6 +106,7 @@ struct tm *jjy_get_time(void)
   time_t now;
 
   time(&now);
+  now += offset;
   if (dst_flag) now += 3600;
   localtime_r(&now, &timeinfo);
   timeinfo.tm_year -= 100;
@@ -288,7 +292,7 @@ static void create_jjy_frame(struct tm *tm)
   jjy_frame[37] =   pa2;           // :37 PA2
   jjy_frame[38] =   0;             // :38 SU1
   jjy_frame[39] =   JJY_BIT_PMn;   // :39 P4
-  jjy_frame[40] =   0;             // :40 SU2
+  jjy_frame[40] =   dst_flag;      // :40 SU2
   jjy_frame[41] =   yy & 0x80;     // :41
   jjy_frame[42] =   yy & 0x40;     // :42
   jjy_frame[43] =   yy & 0x20;     // :43

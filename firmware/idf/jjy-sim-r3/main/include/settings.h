@@ -22,11 +22,15 @@ typedef struct {
   int band;         // JJY band (40 or 60 kHz)
   bool dst;         // Daylight saving (0:off, 1:on)
   bool hourly_mode; // True if sync assist is enabled
+  int hourly_range; // Sync assist range
   float timezone;   // Timezone (e.g. 9.0, 5.5, 5.75)
   int disp_mode;    // Display mode (0:Normal, 1:Large)
   int brightness;   // Display brightness
   bool night_mode;  // True if night mode is enabled
   bool wifi_valid;  // True if valid Wi-Fi settings are loaded
+  bool ntp_mode;    // 1 if custom NTP server is used
+  char ntp_url[128];// NTP server
+  int offset_time;  // Offset time
 } app_settings_t;
 
 // Global settings instance
@@ -42,6 +46,10 @@ extern app_settings_t s_settings;
 #define WIFI_KEY_BRIGHT         "bright"
 #define WIFI_KEY_NIGHT          "night"
 #define WIFI_KEY_HOURLY         "hourly"
+#define WIFI_KEY_RANGE          "range"
+#define WIFI_KEY_NTP_MODE       "ntp_mode"
+#define WIFI_KEY_NTP_URL        "ntp_url"
+#define WIFI_KEY_OFFSET         "ofs_tm"
 
 // Set default configuration values
 void settings_set_defaults(app_settings_t *cfg);

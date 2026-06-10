@@ -34,6 +34,14 @@
     ".checkrow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:#444;}" \
     ".checkrow input[type=checkbox]{width:auto;margin:0;padding:0;}" \
     ".checkrow label{display:inline;margin:0;}" \
+    ".radiorow{display:flex;align-items:center;gap:8px;}" \
+    ".radiorow input[type=radio]{width:auto;margin:0;padding:0;}" \
+    ".ntp-label{min-width:160px;}" \
+    ".ntp-input{margin-top:8px;}" \
+    ".setting{display:flex;align-items:center;gap:8px;font-size:14px;flex-wrap:nowrap;}"\
+    ".setting label,.setting span {white-space:nowrap;}"\
+    "input[type=number]{width:50px;flex:none;}"\
+    ".disabled{opacity:0.5;}"\
     ""
 
 #define WIFI_AP_MIT_LICENSE \
