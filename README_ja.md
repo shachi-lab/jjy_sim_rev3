@@ -5,6 +5,8 @@ NTPから取得した正確な時刻をもとに、40kHz / 60kHz のJJY信号を
 ミニJJYシミュレーターです。  
 Rev.3 は ESP-IDFで開発しました。
 
+最新版は **R3-1.0.5** です。
+
 👉 [English README is available here](README.md)
 
 ---
@@ -22,6 +24,9 @@ Rev.3 は ESP-IDFで開発しました。
 * **Hブリッジ構成** で高出力です（飛びすぎ注意）
 * **Web ブラウザ** での設定ページ
 * **タイムゾーン と、DST（夏時間）** に対応
+* JJY信号を毎時出力する **Hourly Mode**
+* 夜間にOLED表示の輝度を下げる **Night Mode**
+* 送信時刻を微調整できる **Offset Time**
 * 動作中は**時計画面**を表示
 
 <a href="./images/jjy-sim-r3.jpg">
@@ -219,20 +224,22 @@ ESP-IDF Extension の設定を含めた状態で作業できます。
 
 ---
 
-## 🔗 関連リンク
+## 🔗 サポート / ドキュメント  
 
-* ブログ記事（詳細解説）  
-  👉 https://blog.shachi-lab.com/054_jjy-sim-r3-esp8684-idf/
+最新版の情報、設定方法、詳しい使い方については、以下のサポートページをご覧ください。  
+👉 [JJY-SIM サポートページ](https://blog.shachi-lab.com/support/)
 
 ---
 
-## 表記について
+## 📝 クレジット表記について
 
-本プロジェクトは MIT License で公開しています。
+JJY-SIM は MIT License で公開しています。  
+自由に使ったり、改造したり、自分の作品のベースにしてもらってかまいません。  
 
-JJY-SIM の設計、ファームウェア、回路図、基板データ、筐体データ、ドキュメント等を利用・改変したものを販売、配布、または公開する場合は、製品ページ、説明書、README、パッケージ等、いずれかの分かりやすい場所に、Shachi-lab / JJY-SIM を元にしていることを記載してください。
+JJY-SIM をベースにしたものを販売・配布・公開する場合は、製品ページ、README、説明書、パッケージなど、どこか見える場所に **Shachi-lab / JJY-SIM** のクレジット表記を入れてください。
 
 表記例：
-Designed by Shachi-lab
-Based on JJY-SIM by Shachi-lab
-Inspired by JJY-SIM by Shachi-lab
+
+* Designed by Shachi-lab
+* Based on JJY-SIM by Shachi-lab
+* Inspired by JJY-SIM by Shachi-lab

@@ -5,6 +5,7 @@ This compact simulator reproduces the 40 kHz / 60 kHz JJY radio time signal usin
 based on accurate time obtained from NTP.  
 Rev.3 is developed with ESP-IDF.  
 
+Latest version: **R3-1.0.5**
 
 👉 [README 日本語版はこちら](README_ja.md)
 
@@ -23,6 +24,9 @@ Rev.3 is developed with ESP-IDF.
 * **H-bridge output stage** for higher output power (may transmit farther than expected)
 * Configuration page accessible from a **web browser**
 * Supports **time zones** and **DST (Daylight Saving Time)**
+* **Hourly Mode** for periodic JJY signal output
+* **Night Mode** for reducing OLED display brightness at night
+* **Offset Time** adjustment for fine-tuning the transmitted time
 * Displays a **clock screen** during operation
 
 <a href="./images/jjy-sim-r3.jpg">
@@ -221,20 +225,22 @@ Please make sure to comply with applicable radio regulations when experimenting 
 
 ---
 
-## 🔗 Related Links
+## 🔗 Support / Documentation  
 
-* Blog article with detailed explanation  
-  👉 [https://blog.shachi-lab.com/054_jjy-sim-r3-esp8684-idf/](https://blog.shachi-lab.com/054_jjy-sim-r3-esp8684-idf/)
+For the latest information, setup guide, and detailed usage notes, please see the support page.  
+👉 [JJY-SIM Support Page](https://blog.shachi-lab.com/support/)  
+>Note: The support page is currently available in Japanese only.
 
 ---
+## 📝 Attribution
 
-## Attribution
+JJY-SIM is released under the MIT License.  
+You are free to use, modify, and build upon this project.  
 
-This project is released under the MIT License.
-
-If you sell, distribute, or publicly release any product, design, firmware, schematic, PCB data, enclosure data, documentation, or derivative work based on or modified from JJY-SIM, please include attribution to Shachi-lab / JJY-SIM in a clearly visible place, such as the product page, manual, README, package, or other accompanying documentation.
+When selling, distributing, or publicly releasing something based on JJY-SIM, please include attribution to **Shachi-lab / JJY-SIM** somewhere visible, such as the product page, documentation, README, package, or other accompanying materials.
 
 Example:
-Designed by Shachi-lab
-Based on JJY-SIM by Shachi-lab
-Inspired by JJY-SIM by Shachi-lab
+
+* Designed by Shachi-lab
+* Based on JJY-SIM by Shachi-lab
+* Inspired by JJY-SIM by Shachi-lab
