@@ -5,7 +5,7 @@ NTPから取得した正確な時刻をもとに、40kHz / 60kHz のJJY信号を
 ミニJJYシミュレーターです。  
 Rev.3 は ESP-IDFで開発しました。
 
-最新版は **R3-1.0.5** です。
+最新版は **R3-1.0.6** です。
 
 👉 [English README is available here](README.md)
 

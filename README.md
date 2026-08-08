@@ -5,7 +5,7 @@ This compact simulator reproduces the 40 kHz / 60 kHz JJY radio time signal usin
 based on accurate time obtained from NTP.  
 Rev.3 is developed with ESP-IDF.  
 
-Latest version: **R3-1.0.5**
+Latest version: **R3-1.0.6**
 
 👉 [README 日本語版はこちら](README_ja.md)
 

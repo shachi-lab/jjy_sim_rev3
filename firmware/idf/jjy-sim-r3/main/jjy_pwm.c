@@ -56,7 +56,7 @@ static const char *TAG __attribute__((unused)) = "jjy_pwm";
 
 #define TICK_US         (1000000LL / configTICK_RATE_HZ)
 
-#define PWM_BITS        LEDC_TIMER_9_BIT
+#define PWM_BITS        LEDC_TIMER_8_BIT
 #define PWM_CH_A        LEDC_CHANNEL_0
 #define PWM_CH_B        LEDC_CHANNEL_1
 #define PWM_TIMER       LEDC_TIMER_0
